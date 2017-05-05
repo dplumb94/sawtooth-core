@@ -29,7 +29,7 @@ a CBOR encoded dictionary, with the key being the *Name* and the value being an 
 .. code-block:: python
 
     cbor.dumps({
-        # The name of the entry : The current value of the entry
+        // The name of the entry : The current value of the entry
         'Name':'Value'
     })
 
@@ -40,13 +40,7 @@ a CBOR encoded dictionary, with the key being the *Name* and the value being an 
 
 Addressing
 ----------
-IntegerKey data is stored in the state dictionary using addresses which are generated from the IntegerKey namespace prefix and the unique name of the IntegerKey entry. Addresses will adhere to the following format:
-
-- Addresses must be a 70 character hexadecimal string
-- The first 6 characters of the address are the first 6 characters of a sha512 hash of the IntegerKey namespace prefix: "intkey"
-- The following 64 characters of the address are the last 64 characters of a sha512 hash of the entry *Name*
-
-For example, an IntegerKey address could be generated as follows:
+IntegerKey data is stored in the state dictionary using addresses which are generated from the IntegerKey namespace prefix and the unique name of the IntegerKey entry. These addresses are generated using the following algorithm:
 
 .. code-block:: pycon
 
@@ -63,13 +57,13 @@ IntegerKey transaction request payloads are defined by the following CBOR data f
 .. code-block:: python
 
     cbor.dumps({
-        # Describes the action the transaction takes, either 'set', 'inc', or 'dec'
+        // Describes the action the transaction takes, either 'set', 'inc', or 'dec'
         'Verb': 'verb',
 
-        # The variable name of the entry which is to be modified
+        // The variable name of the entry which is to be modified
         'Name': 'name',
 
-        # The amount to set, increment, or decrement
+        // The amount to set, increment, or decrement
         'Value': 1234,
     })
 
