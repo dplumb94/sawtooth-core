@@ -21,6 +21,10 @@ import signal
 import time
 import threading
 
+from pyformance import MetricsRegistry
+from pyformance.meters import Counter
+from pyformance.reporters import InfluxReporter
+
 from sawtooth_validator.execution.context_manager import ContextManager
 from sawtooth_validator.database.lmdb_nolock_database import LMDBNoLockDatabase
 from sawtooth_validator.journal.genesis import GenesisController
@@ -150,6 +154,16 @@ class Validator(object):
         batch_tracker = BatchTracker(block_store)
         block_store.add_update_observer(batch_tracker)
 
+        # setup stat collection
+        metrics_registry = MetricsRegistry()
+
+        reporter = InfluxReporter(registry=metrics_registry,
+                                  database='metrics',
+                                  server='127.0.0.1',
+                                  port='8086',
+                                  prefix='sawtooth.validator')
+        reporter.start()
+
         # setup network
         self._dispatcher = Dispatcher()
 
@@ -172,6 +186,7 @@ class Validator(object):
             settings_view_factory=SettingsViewFactory(
                                     StateViewFactory(merkle_db)),
             scheduler_type=scheduler_type,
+            metrics_registry=metrics_registry,
             invalid_observers=[batch_tracker])
 
         self._executor = executor
