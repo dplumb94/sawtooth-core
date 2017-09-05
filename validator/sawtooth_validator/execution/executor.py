@@ -49,6 +49,7 @@ class TransactionExecutorThread(object):
                  processors,
                  waiting_threadpool,
                  settings_view_factory,
+                 transactions_executed,
                  invalid_observers):
         """
         Args:
@@ -78,6 +79,7 @@ class TransactionExecutorThread(object):
         self._waiters_by_type = _WaitersByType()
         self._waiting_threadpool = waiting_threadpool
         self._done = False
+        self._transactions_executed = transactions_executed
         self._invalid_observers = invalid_observers
         self._open_futures = ThreadsafeDict()
 
@@ -242,6 +244,7 @@ class TransactionExecutorThread(object):
                                  content,
                                  connection_id=connection_id,
                                  callback=self._future_done_callback)
+        self._transactions_executed.inc()
         if connection_id in self._open_futures:
             self._open_futures[connection_id].update(
                 {signature: fut})
@@ -283,6 +286,7 @@ class TransactionExecutor(object):
                  context_manager,
                  settings_view_factory,
                  scheduler_type,
+                 metrics_registry,
                  invalid_observers=None):
         """
         Args:
@@ -299,6 +303,7 @@ class TransactionExecutor(object):
             _waiters_by_type (_WaitersByType): Threadsafe map of ProcessorType
                 to _Waiter that is waiting on a processor of that type.
         """
+        self._transactions_executed = metrics_registry.counter("execution.executor.transactions_executed")
         self._service = service
         self._context_manager = context_manager
         self.processors = processor_iterator.ProcessorIteratorCollection(
@@ -379,6 +384,7 @@ class TransactionExecutor(object):
             processors=self.processors,
             waiting_threadpool=self._waiting_threadpool,
             settings_view_factory=self._settings_view_factory,
+            transactions_executed=self._transactions_executed,
             invalid_observers=self._invalid_observers)
         self._executing_threadpool.submit(t.execute_thread)
         with self._lock:
