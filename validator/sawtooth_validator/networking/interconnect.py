@@ -50,6 +50,7 @@ from sawtooth_validator.protobuf.authorization_pb2 import \
 from sawtooth_validator.protobuf.authorization_pb2 import RoleType
 from sawtooth_validator.metrics.wrappers import TimerWrapper
 from sawtooth_validator.metrics.wrappers import CounterWrapper
+from sawtooth_validator.metrics.wrappers import GaugeWrapper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -161,6 +162,12 @@ class _SendReceive(object):
         self._metrics_registry = metrics_registry
         self._received_message_counters = {}
         self._dispatcher_queue = None
+
+        if metrics_registry:
+            self._queue_size_gauge = GaugeWrapper(
+                metrics_registry.gauge('interconnect.send_receive_queue_size_gauge'))
+        else:
+            self._queue_size_gauge = GaugeWrapper()
 
     @property
     def connection(self):
@@ -289,12 +296,10 @@ class _SendReceive(object):
     def _dispatch_message(self):
         while True:
             try:
-                queue_size = self._dispatcher_queue.qsize()
-                if queue_size > 10:
-                    LOGGER.debug("Dispatch queue size: %s", queue_size)
-
                 zmq_identity, msg_bytes = \
                     yield from self._dispatcher_queue.get()
+                self._queue_size_gauge.set_value(
+                    self._dispatcher_queue.qsize())
                 message = validator_pb2.Message()
                 message.ParseFromString(msg_bytes)
 
@@ -350,6 +355,8 @@ class _SendReceive(object):
                     msg_bytes = yield from self._socket.recv()
                     self._last_message_time = time.time()
                     self._dispatcher_queue.put_nowait((None, msg_bytes))
+                self._queue_size_gauge.set_value(
+                    self._dispatcher_queue.qsize())
 
             except CancelledError:
                 # The concurrent.futures.CancelledError is caught by asyncio
